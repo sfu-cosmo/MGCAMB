@@ -790,6 +790,7 @@ class CAMBdata(F2003Class):
 
                 #ZW's new edit starts 
                 new_cambdata = copy.copy(self)
+                new_cambdata.Params.omch2 = self.Params.omnuh2 + self.Params.omch2
                 new_cambdata.Params.omnuh2 = 0
 
                 #get pseudo power spectrum
