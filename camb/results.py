@@ -7,6 +7,7 @@ from ._config import config
 from .model import set_default_params, CAMBparams
 import logging
 from scipy.interpolate import RectBivariateSpline, interp1d
+import copy
 
 
 #ZW:
