@@ -677,7 +677,8 @@ int compute_reaction_nu_ext(int* N_pk_m, double* torpk_m,
                   }
                   else {
                   // Copter takes transfer function as input - Easiest fix is to just convert input PS to T
-                    Tlcdm[j] = sqrt(torpk_lcdm[(*N_z-i-1)*(*N_k_lcdm)+j] / (2*M_PI*M_PI * (*As) * ki[j] * pow(*h,4) * pow(ki[j]*(*h)/(*pscale), *n_s-1.)));
+                  // HM changed ki[j] to kilcdm[j]
+                    Tlcdm[j] = sqrt(torpk_lcdm[(*N_z-i-1)*(*N_k_lcdm)+j] / (2*M_PI*M_PI * (*As) * kilcdm[j] * pow(*h,4) * pow(kilcdm[j]*(*h)/(*pscale), *n_s-1.)));
                     }
                   }
 
