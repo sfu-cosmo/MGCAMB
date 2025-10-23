@@ -776,6 +776,7 @@ class CAMBdata(F2003Class):
         var1, var2 = self._transfer_var(var1, var2)
 
         hubble_units = c_int(hubble_units)
+        k_hunit = c_int(k_hunit) #HM
         PK = np.empty((nz, nk))
 
         z = self.Params.Transfer.PK_redshifts[:nz]
@@ -800,8 +801,8 @@ class CAMBdata(F2003Class):
                 #ZW's new edit ends
 
                 if (var1.value == c_int(Transfer_tot).value and var2.value == c_int(Transfer_tot).value):
-
-                    react, lin_MG, z_react, pseudo = self.Params.NonLinearModel.get_react_function(self, hubble_units=hubble_units, nz=nz, nk=nk, kh=kh, z_lin=z, calc_PK_lin=CAMBdata_GetLinearMatterPower)
+                    # HM added k_hunit, calc_PK_k to the argument
+                    react, lin_MG, z_react, pseudo = self.Params.NonLinearModel.get_react_function(self, hubble_units=hubble_units, k_hunit=k_hunit, nz=nz, nk=nk, kh=kh, z_lin=z, calc_PK_lin=CAMBdata_GetLinearMatterPower, calc_PK_k=CAMBdata_mattertransferks)
 
                     #complements z higher than z_react = 2.5 with pseudo PK
                     if (len(z)>len(z_react)):
