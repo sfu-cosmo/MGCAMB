@@ -72,8 +72,8 @@ class Halofit(NonLinearModel):
     def get_halofit_version(self):
         return self.halofit_version
 
-    #ZW
-    def get_react_function(self, CAMBdata = None, hubble_units=True, nz = 4, nk = 200, kh = None, z_lin = None,    calc_PK_lin = None):
+    #ZW  HM: added k_hunit, calc_PK_k to arguments, change kh to kh_lcdm
+    def get_react_function(self, CAMBdata = None, hubble_units=True, k_hunit=True, nz = 4, nk = 200, kh = None, z_lin = None,    calc_PK_lin = None, calc_PK_k = None):
 
 
         Params = CAMBdata.Params
@@ -150,9 +150,9 @@ class Halofit(NonLinearModel):
         n_s = Params.InitPower.ns
         A_s = Params.InitPower.As
 
-
-        PK_lin_tot, PK_lin_cb, PK_lcdm_cb = self.get_power_spectrum_asinput(CAMBdata=CAMBdata,
-                                         hubble_units=hubble_units, nz=nz, nk=nk, calc_PK_lin=calc_PK_lin)
+        # HM added kh_lcdm
+        PK_lin_tot, PK_lin_cb, PK_lcdm_cb, kh_lcdm = self.get_power_spectrum_asinput(CAMBdata=CAMBdata,
+                                         hubble_units=hubble_units, k_hunit=k_hunit, nz=nz, nk=nk, calc_PK_lin=calc_PK_lin, calc_PK_k=calc_PK_k)
 
         #Now run ReACT to get the reaction and the modified gravity linear power spectrum
         react = pyreact.ReACT()
@@ -172,11 +172,11 @@ class Halofit(NonLinearModel):
 
         #make sure to call reconstruction ahead
         react.get_reconstruction_arr(Omega_m)
-
+        # HM changed kh to kh_lcdm
         react, pofk_lin_MG_react, sigma_8, pseudo = react.compute_reaction_nu_ext(
                                         h, n_s, Omega_m, Omega_b, Omega_nu, A_s, 
                                         z_react, kh, PK_lin_tot_cut.flatten(), PK_lin_cb_cut.flatten(),
-                                        kh, PK_lcdm_cb_cut.flatten(), 
+                                        kh_lcdm, PK_lcdm_cb_cut.flatten(), 
                                         pscale = 0.05,
                                         model=mymodel, 
                                         extpars=extrapars,
@@ -185,9 +185,9 @@ class Halofit(NonLinearModel):
                                         verbose=False)
         return react, pofk_lin_MG_react, z_react, pseudo
 
-
-    def get_power_spectrum_asinput(self, CAMBdata, hubble_units=True, nz = 4, 
-                           nk = 200, calc_PK_lin = None):
+    # HM added k_hunit, calc_PK_k, kh
+    def get_power_spectrum_asinput(self, CAMBdata, hubble_units=True, k_hunit=True, nz = 4, 
+                           nk = 200, calc_PK_lin = None, calc_PK_k = None):
         r"""
         get different types of matter power spectrums as the input for react
 
@@ -195,7 +195,6 @@ class Halofit(NonLinearModel):
 
         PK_lin_tot_in = np.empty((nz, nk))
         PK_lin_cb_in = np.empty((nz, nk))
-        PK_lcdm_cb_in = np.empty((nz, nk))
 
 
         #default MG 
@@ -209,10 +208,23 @@ class Halofit(NonLinearModel):
         new_CAMBdata.Params.set_mgparams(MG_flag=0)
 
         new_CAMBdata.calc_power_spectra(new_CAMBdata.Params)
+        # HM
+        num_k = c_int(0)
+        calc_PK_k(byref(new_CAMBdata), byref(num_k), np.array([]))
+        nk_lcdm = num_k.value
+
+        ks = np.empty(nk_lcdm, dtype=np.float64)
+        calc_PK_k(byref(new_CAMBdata), byref(num_k), ks)
+        PK_lcdm_cb_in = np.empty((nz, nk_lcdm))
+
+        if k_hunit:
+            kh = ks / (new_CAMBdata.Params.H0 / 100)
+        else:
+            kh = ks
 
         calc_PK_lin(byref(new_CAMBdata), PK_lcdm_cb_in, byref(Transfer_nonu), byref(Transfer_nonu), byref(hubble_units))
 
-        return PK_lin_tot_in, PK_lin_cb_in, PK_lcdm_cb_in
+        return PK_lin_tot_in, PK_lin_cb_in, PK_lcdm_cb_in, kh
 
     #ZW
     def set_params(self, halofit_version=halofit_default, HMCode_A_baryon=3.13, HMCode_eta_baryon=0.603,
