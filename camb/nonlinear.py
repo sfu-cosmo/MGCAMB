@@ -208,13 +208,22 @@ class Halofit(NonLinearModel):
         new_CAMBdata.Params.set_mgparams(MG_flag=0)
 
         new_CAMBdata.calc_power_spectra(new_CAMBdata.Params)
-        # HM
-        num_k = c_int(0)
-        calc_PK_k(byref(new_CAMBdata), byref(num_k), np.array([]))
-        nk_lcdm = num_k.value
+        # HM: try to get the LCDM k-grid from the low-level CAMB function.
+        if calc_PK_k is None:
+            from .results import CAMBdata_mattertransferdata, _MatterTransferData
+            mt = _MatterTransferData()
+            CAMBdata_mattertransferdata(byref(new_CAMBdata), byref(mt))
 
-        ks = np.empty(nk_lcdm, dtype=np.float64)
-        calc_PK_k(byref(new_CAMBdata), byref(num_k), ks)
+            nk_lcdm = mt.num_q_trans
+            ks = np.ctypeslib.as_array(mt.q_trans, shape=(nk_lcdm,)).copy()
+        else:
+            # normal path: use the dedicated k-fetcher
+            num_k = c_int(0)
+            calc_PK_k(byref(new_CAMBdata), byref(num_k), np.array([]))
+            nk_lcdm = num_k.value
+            ks = np.empty(nk_lcdm, dtype=np.float64)
+            calc_PK_k(byref(new_CAMBdata), byref(num_k), ks)
+
         PK_lcdm_cb_in = np.empty((nz, nk_lcdm))
 
         if k_hunit:
@@ -223,7 +232,12 @@ class Halofit(NonLinearModel):
             kh = ks
 
         calc_PK_lin(byref(new_CAMBdata), PK_lcdm_cb_in, byref(Transfer_nonu), byref(Transfer_nonu), byref(hubble_units))
-
+        #LY
+        if not hubble_units:
+            PK_lin_tot_in *= (new_CAMBdata.Params.H0 / 100) ** 3
+            PK_lin_cb_in *= (new_CAMBdata.Params.H0 / 100) ** 3
+            PK_lcdm_cb_in *= (new_CAMBdata.Params.H0 / 100) ** 3
+            
         return PK_lin_tot_in, PK_lin_cb_in, PK_lcdm_cb_in, kh
 
     #ZW
